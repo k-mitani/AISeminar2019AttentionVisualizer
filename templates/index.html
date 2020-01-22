@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>Self Attention可視化</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://code.jquery.com/jquery-1.12.4.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.9.1/underscore-min.js"></script>
+    <style>
+        body {
+            font-family: monospace;
+        }
+        h2 {
+            margin: 0;
+        }
+        textarea {
+            white-space: pre-wrap;
+            overflow: auto;
+        }
+        input {
+            width: 2em;
+        }
+
+        #result {
+            padding: 0.3em;
+            line-height: 1.2em;
+            white-space: pre-wrap;
+            background: #eee;
+            width: 20em;
+            height: 10em;
+            overflow-wrap: break-word;
+        }
+
+        .word {
+            border: 1px solid transparent;
+        }
+        .ADJ   { color: #e80; } /* 形容詞 adjective    big, old, green, incomprehensible, first */
+        .ADP   { color: #000; } /* アドポジション adposition   in, to, during */
+        .ADV   { color: #08f; } /* 副詞 adverb   very, tomorrow, down, where, there */
+        .AUX   { color: #0ff; } /* 助動詞 auxiliary    is, has (done), will (do), should (do) */
+        .CONJ  { color: #000; } /* 接続詞 conjunction  and, or, but */
+        .CCONJ { color: #000; } /* 調整する coordinating  conjunction    and, or, but */
+        .DET   { color: #80f; } /* 決定者 determiner   a, an, the */
+        .INTJ  { color: #000; } /* 間投詞 interjection     psst, ouch, bravo, hello */
+        .NOUN  { color: #e0e; } /* 名詞 noun     girl, cat, tree, air, beauty */
+        .NUM   { color: #000; } /* 数字 numeral  1, 2017, one, seventy-seven, IV, MMXIV */
+        .PART  { color: #000; } /* 粒子 particle     ’s, not, */
+        .PRON  { color: #f00; } /* 代名詞 pronoun  I, you, he, she, myself, themselves, somebody */
+        .PROPN { color: #f00; } /* 固有名詞 proper noun Mary, John, London, NATO, HBO */
+        .PUNCT { color: #000; } /* 句読点 punctuation  ., (, ), ? */
+        .SCONJ { color: #e0e; } /* 従属する subordinating  conjunction   if, while, that */
+        .SYM   { color: #000; } /* シンボル symbol   $, %, §, ©, +, −, ×, ÷, =, :), 😝 */
+        .VERB  { color: #0f0; } /* 動詞 verb     run, runs, running, eat, ate, eating */
+        .X     { color: #000; } /* その他 other    sfpksdpsxmsa */
+        .SPACE { color: #000; } /* スペース space     */        
+    </style>
+</head>
+<body>
+    <h2>Self Attention可視化</h2>
+    <div style="float: left">
+        <h3>入力</h3>
+        <textarea id="input_words" cols="30" rows="10">Chinese authorities have advised people to stop travel into and out of Wu han, the city at the centre of a new virus outbreak that has killed nine.</textarea>
+    </div>
+
+    <div style="float: left; margin-top: 8em; margin-left: 0.3em;">→</div>
+
+    <div style="float: left; margin-left: 0.3em;">
+        <h3>結果</h3>
+        <pre id="result" width="40em" height="10em"></pre>
+    </div>
+    <div style="clear: both;"></div>
+    <button id="send">送信</button>
+    <div style="float: right; margin-left: 1em;">
+        <label>ヘッド: <input id="input-head" type="number" value=2></label>
+    </div>
+    <div style="float: right; margin-left: 1em;">
+        <label>アテンション層: <input id="input-layer" type="number" value="8"></label>
+    </div>
+    <div style="clear: both;"></div>
+    
+    <h4>ログ</h4>
+    <textarea id="message" cols="120" rows="20"></textarea>
+    <script>
+        var $inputWords = $("#input_words");
+        var $send = $("#send");
+        var $message = $("#message");
+        var $result = $("#result");
+        
+        var words = [];
+        var attentions = [];
+
+        $result.on("mouseover", ".word", e => {
+            e.currentTarget.style.border = "solid 1px rgba(0,255,0,1)";
+            var wordIndex = $(e.currentTarget).data("index")
+
+
+            var attentionLayer = parseInt($("#input-layer").val());
+            var batchNo = 0;
+            var head = parseInt($("#input-head").val());
+            var attention = attentions[attentionLayer][batchNo][head][wordIndex];
+            window.__aaa = attention;
+            $(".word").toArray().forEach((el, i) => {
+                el.style.background = "rgba(255,0,0," + attention[i] + ")"
+            });            
+        });
+        $result.on("mouseleave", ".word", e => {
+            e.currentTarget.style.border = "";
+            $(".word").toArray().forEach((el, i) => {
+                el.style.background = "";
+            });            
+        });
+
+
+
+        function send() {
+            var data = JSON.stringify({text: $inputWords.val()});
+            $result.text("");
+            log("解析中... " + data);
+
+            $.ajax({
+                url:'analyze',
+                type:'POST',
+                data: data,
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+            }).then(function(result) {
+                window.aaa = result;
+                words = result.words;
+                attentions = result.attentions;
+                console.log(result.words.length, result.attentions[0][0][0].length)
+                
+                var els = result.words.map((w, i) => $($.parseHTML('<span class="word" />'))
+                    .addClass(w.pos)
+                    .attr("data-index", i)
+                    .text(w.text)[0].outerHTML);
+                console.log(els)
+                $result.html(els.join(" "));
+                //console.log(result);
+                // $result.text(result);
+                log("解析成功: " + JSON.stringify(result.words))
+            }, function(e, res, message) {
+                console.log(arguments);
+                $result.text(e.responseJSON.replace(/"/g, ''));
+                log("解析エラー: " + (res + " " + message + " " + e.responseJSON));
+            });
+        }
+
+        function now() {
+            return new Date(Date.now()).toISOString();
+        }
+
+        function log(message) {
+            $message.text(now() + " " + message + "\n" + $message.text());
+        }
+        
+        $inputWords.on("keydown", function(ev) {
+            if (ev.shiftKey && ev.key === "Enter") {
+                send();
+                return false;
+            }
+        });
+
+        $send.on("click", function() {
+            send();
+        });
+    </script>
+</body>
+</html>
