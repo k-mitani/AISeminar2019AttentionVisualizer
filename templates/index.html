@@ -75,6 +75,11 @@
             <label>アテンション層: <input id="input-layer" type="number" value="8"></label>
         </div>
         <div style="clear: both;"></div>
+        <div>
+            <label><input type="radio" name="p1" id="src-attention">対象の語へのAttention</label><br>
+            <label><input type="radio" name="p1" id="dst-attention">対象の語からのAttention</label><br>
+            <label><input type="radio" name="p1" id="src-attention-all" checked>対象の語へのAttentionの全層の合計</label>
+        </div>
     </div>
     <div style="clear: both;"></div>
     <button id="send">送信</button>
@@ -88,6 +93,10 @@
         var $message = $("#message");
         var $result = $("#result");
         
+        var $srcAttention = $("#src-attention");
+        var $dstAttention = $("#dst-attention");
+        var $srcAttentionAll = $("#src-attention-all");
+        
         var words = [];
         var attentions = [];
 
@@ -95,15 +104,40 @@
             e.currentTarget.style.border = "solid 1px rgba(0,255,0,1)";
             var wordIndex = $(e.currentTarget).data("index")
 
-
             var attentionLayer = parseInt($("#input-layer").val());
             var batchNo = 0;
             var head = parseInt($("#input-head").val());
-            var attention = attentions[attentionLayer][batchNo][head][wordIndex];
-            window.__aaa = attention;
+
+            var attention;
+            if ($srcAttention.prop('checked')) {
+                attention = attentions[attentionLayer][batchNo][head][wordIndex];
+                window.__aaa = attention;
+            }
+            if ($dstAttention.prop('checked')) {
+                attention = attentions[attentionLayer][batchNo][head].map((ats, i) => {
+                    return ats[wordIndex];
+                });
+                window.__aaa = attention;
+            }
+            if ($srcAttentionAll.prop('checked')) {
+                attention = new Array(attentions[attentionLayer][batchNo][head].length).fill(0);
+                for (let index = 0; index < attentions.length; index++) {
+                    const layer = attentions[index][batchNo];
+                    for (let indexHead = 0; indexHead < layer.length; indexHead++) {
+                        const ats = layer[indexHead][wordIndex];
+                        for (let indexWord = 0; indexWord < ats.length; indexWord++) {
+                            attention[indexWord] += ats[indexWord];
+                        }
+                    }
+                }
+                var maxAttention = Math.max.apply(Math, attention);
+                attention = attention.map(a => a / maxAttention);
+                window.__aaa = attention;
+            }
+
             $(".word").toArray().forEach((el, i) => {
-                el.style.background = "rgba(255,0,0," + attention[i] + ")"
-            });            
+                el.style.background = "rgba(255,0,0," + attention[i] + ")";
+            });
         });
         $result.on("mouseleave", ".word", e => {
             e.currentTarget.style.border = "";
