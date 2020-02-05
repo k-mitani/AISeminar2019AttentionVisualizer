@@ -28,7 +28,7 @@
             white-space: pre-wrap;
             background: #eee;
             width: 20em;
-            height: 10em;
+            min-height: 10em;
             overflow-wrap: break-word;
         }
 
@@ -68,16 +68,17 @@
     <div style="float: left; margin-left: 0.3em;">
         <h3>結果</h3>
         <pre id="result" width="40em" height="10em"></pre>
+        <div style="float: right; margin-left: 1em;">
+            <label>ヘッド: <input id="input-head" type="number" value=2></label>
+        </div>
+        <div style="float: right; margin-left: 1em;">
+            <label>アテンション層: <input id="input-layer" type="number" value="8"></label>
+        </div>
+        <div style="clear: both;"></div>
     </div>
     <div style="clear: both;"></div>
     <button id="send">送信</button>
-    <div style="float: right; margin-left: 1em;">
-        <label>ヘッド: <input id="input-head" type="number" value=2></label>
-    </div>
-    <div style="float: right; margin-left: 1em;">
-        <label>アテンション層: <input id="input-layer" type="number" value="8"></label>
-    </div>
-    <div style="clear: both;"></div>
+
     
     <h4>ログ</h4>
     <textarea id="message" cols="120" rows="20"></textarea>
